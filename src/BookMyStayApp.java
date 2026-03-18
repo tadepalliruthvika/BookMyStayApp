@@ -1,27 +1,43 @@
-import java.util.HashMap;
-import java.util.Map;
+import java.util.LinkedList;
+import java.util.Queue;
 
-class RoomInventory {
+class Reservation {
 
-    private Map<String, Integer> roomAvailability;
+    private String guestName;
+    private String roomType;
 
-    public RoomInventory() {
-        roomAvailability = new HashMap<>();
-        initializeInventory();
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    private void initializeInventory() {
-        roomAvailability.put("Single", 5);
-        roomAvailability.put("Double", 3);
-        roomAvailability.put("Suite", 2);
+    public String getGuestName() {
+        return guestName;
     }
 
-    public Map<String, Integer> getRoomAvailability() {
-        return roomAvailability;
+    public String getRoomType() {
+        return roomType;
+    }
+}
+
+class BookingRequestQueue {
+
+    private Queue<Reservation> requestQueue;
+
+    public BookingRequestQueue() {
+        requestQueue = new LinkedList<>();
     }
 
-    public void updateAvailability(String roomType, int count) {
-        roomAvailability.put(roomType, count);
+    public void addRequest(Reservation reservation) {
+        requestQueue.offer(reservation);
+    }
+
+    public Reservation getNextRequest() {
+        return requestQueue.poll();
+    }
+
+    public boolean hasPendingRequests() {
+        return !requestQueue.isEmpty();
     }
 }
 
@@ -29,19 +45,23 @@ public class BookMyStayApp {
 
     public static void main(String[] args) {
 
-        RoomInventory inventory = new RoomInventory();
+        System.out.println("Booking Request Queue\n");
 
-        Map<String, Integer> availability = inventory.getRoomAvailability();
+        BookingRequestQueue queue = new BookingRequestQueue();
 
-        System.out.println("Hotel Room Inventory Status\n");
+        Reservation r1 = new Reservation("Abhi", "Single");
+        Reservation r2 = new Reservation("Subha", "Double");
+        Reservation r3 = new Reservation("Vannathi", "Suite");
 
-        System.out.println("Single Room:");
-        System.out.println("Available Rooms: " + availability.get("Single") + "\n");
+        queue.addRequest(r1);
+        queue.addRequest(r2);
+        queue.addRequest(r3);
 
-        System.out.println("Double Room:");
-        System.out.println("Available Rooms: " + availability.get("Double") + "\n");
-
-        System.out.println("Suite Room:");
-        System.out.println("Available Rooms: " + availability.get("Suite"));
+        while (queue.hasPendingRequests()) {
+            Reservation r = queue.getNextRequest();
+            System.out.println("Processing Booking:");
+            System.out.println("Guest: " + r.getGuestName());
+            System.out.println("Room Type: " + r.getRoomType() + "\n");
+        }
     }
 }
