@@ -1,37 +1,14 @@
+import java.io.*;
 import java.util.*;
 
-class Reservation {
-    String guestName;
-    String roomType;
-
-    Reservation(String guestName, String roomType) {
-        this.guestName = guestName;
-        this.roomType = roomType;
-    }
-}
-
-class BookingRequestQueue {
-    private Queue<Reservation> queue = new LinkedList<>();
-
-    public void addRequest(Reservation r) {
-        queue.offer(r);
-    }
-
-    public Reservation getNextRequest() {
-        return queue.poll();
-    }
-
-    public boolean isEmpty() {
-        return queue.isEmpty();
-    }
-}
-
 class RoomInventory {
+
     private Map<String, Integer> availability = new HashMap<>();
 
     public RoomInventory() {
-        availability.put("Single", 1);
-        availability.put("Double", 1);
+        availability.put("Single", 5);
+        availability.put("Double", 3);
+        availability.put("Suite", 2);
     }
 
     public Map<String, Integer> getRoomAvailability() {
@@ -43,53 +20,45 @@ class RoomInventory {
     }
 }
 
-class RoomAllocationService {
+class FilePersistenceService {
 
-    public void allocateRoom(Reservation r, RoomInventory inventory) {
+    public void saveInventory(RoomInventory inventory, String filePath) {
 
-        String type = r.roomType;
-        int available = inventory.getRoomAvailability().get(type);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
 
-        if (available > 0) {
-            inventory.update(type, available - 1);
-            System.out.println(Thread.currentThread().getName() +
-                    " booked " + type + " for " + r.guestName);
-        } else {
-            System.out.println(Thread.currentThread().getName() +
-                    " failed for " + r.guestName);
+            for (Map.Entry<String, Integer> entry : inventory.getRoomAvailability().entrySet()) {
+                writer.write(entry.getKey() + "=" + entry.getValue());
+                writer.newLine();
+            }
+
+            System.out.println("Inventory saved successfully.");
+
+        } catch (IOException e) {
+            System.out.println("Error saving file");
         }
     }
-}
 
-class ConcurrentBookingProcessor implements Runnable {
+    public void loadInventory(RoomInventory inventory, String filePath) {
 
-    private BookingRequestQueue queue;
-    private RoomInventory inventory;
-    private RoomAllocationService service;
+        File file = new File(filePath);
 
-    public ConcurrentBookingProcessor(BookingRequestQueue queue,
-                                      RoomInventory inventory,
-                                      RoomAllocationService service) {
-        this.queue = queue;
-        this.inventory = inventory;
-        this.service = service;
-    }
+        if (!file.exists()) {
+            System.out.println("No valid inventory data found. Starting fresh.");
+            return;
+        }
 
-    @Override
-    public void run() {
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
 
-        while (true) {
+            String line;
 
-            Reservation r;
+            while ((line = reader.readLine()) != null) {
 
-            synchronized (queue) {
-                if (queue.isEmpty()) break;
-                r = queue.getNextRequest();
+                String[] parts = line.split("=");
+                inventory.update(parts[0], Integer.parseInt(parts[1]));
             }
 
-            synchronized (inventory) {
-                service.allocateRoom(r, inventory);
-            }
+        } catch (IOException e) {
+            System.out.println("Error loading file");
         }
     }
 }
@@ -98,19 +67,20 @@ public class BookMyStayApp {
 
     public static void main(String[] args) {
 
-        BookingRequestQueue queue = new BookingRequestQueue();
+        System.out.println("System Recovery\n");
 
-        queue.addRequest(new Reservation("Abhi", "Single"));
-        queue.addRequest(new Reservation("Subha", "Double"));
-        queue.addRequest(new Reservation("Vannathi", "Single"));
+        String filePath = "inventory.txt";
 
         RoomInventory inventory = new RoomInventory();
-        RoomAllocationService service = new RoomAllocationService();
+        FilePersistenceService service = new FilePersistenceService();
 
-        Thread t1 = new Thread(new ConcurrentBookingProcessor(queue, inventory, service));
-        Thread t2 = new Thread(new ConcurrentBookingProcessor(queue, inventory, service));
+        service.loadInventory(inventory, filePath);
 
-        t1.start();
-        t2.start();
+        System.out.println("\nCurrent Inventory:");
+        for (Map.Entry<String, Integer> entry : inventory.getRoomAvailability().entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
+
+        service.saveInventory(inventory, filePath);
     }
 }
